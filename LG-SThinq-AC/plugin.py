@@ -3,7 +3,7 @@
 #       Author: olinek2, 2018
 #       
 """
-<plugin key="LG-SmartThinq-AC" name="LG AC SmartThinq" author="olinek2" version="0.1.0" wikilink="https://github.com/olinek2/LGAC_SmartT">
+<plugin key="LG-SmartThinq-AC" name="LG AC SmartThinq" author="olinek2" version="0.2.0" wikilink="https://github.com/olinek2/LGAC_SmartT">
     <description>
         LG AC SmartThinq Plugin
     </description>
@@ -27,17 +27,13 @@
 """
 #        <param field="Mode4" label="Refresh Token" width="200px"  required="true" default="e746522c66ff6ec2116e876d80f755984cb0d289bc7d11ae55f70af9bd0551cf0b91a6fd22f32be211c7675b715d2dd5"/>
 #        <param field="Mode2" label="LG AC ID" width="200px" required="true" default="0750d920-689f-11dc-a10a-a06faaad2e3e"/>
+#        changes to support updated msgpack and allow plugin restart + connection recovery
 
-import sys
-import os 
-#module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
-#for mp in module_paths:
-#    sys.path.append(mp)
+
 
 import Domoticz
-sys.path.append('/usr/local/lib/python3.5/dist-packages')
+import importlib
 import msgpack
-import time
 from datetime import datetime 
 
 class BasePlugin:
@@ -51,40 +47,38 @@ class BasePlugin:
     def __init__(self):
         #self.var = 123
         self.heartBeatCnt = 0
+        self.heartBeatSec = 0
+        self.heartBeatInterval = 0
+        self.heartBeatsPerDay = 60 * 60 * 24
         self.subHost = None
         self.subPort = None
         self.tcpConn = None
-        powerOn = 0
-        self.unpacker = msgpack.Unpacker(encoding='utf-8')
+        self.powerOn = 0
+        self.unpacker = msgpack.Unpacker()
         return
 
     def onStart(self):
+        Domoticz.Log("onStart")
+
         if Parameters["Mode6"] == "Debug":
             Domoticz.Debugging(1)
 
         self.heartBeatCnt = 0
+        self.heartBeatSec = int(Parameters['Mode3'])
+        self.heartBeatsPerDay = (60 * 60 * 24) / self.heartBeatSec
+        self.heartBeatInterval = self.heartBeatSec / 15
+
         self.subHost, self.subPort = Parameters['Mode1'].split(':')
+
+        Domoticz.Log("onStart called:" +Parameters['Mode3'])
 
         self.tcpConn = Domoticz.Connection(Name='LGACServer', Transport='TCP/IP', Protocol='None',
                                            Address=self.subHost, Port=self.subPort)
-        #Domoticz.Device(Unit= 1, Name="kWh", TypeName="kWh").Create()
-        Domoticz.Log("onStart called:" +Parameters['Mode3'])
-        #if self.iconName not in Images: Domoticz.Image('CondStatus.zip').Create()
-        #if ("CondStatus" not in Images): 
-        #    Domoticz.Image('CondStatus.zip').Create()
-        #iconCondID = Images["CondStatus"].ID Images[self.iconName].ID
-        if self.iconCondName not in Images: Domoticz.Image('CondStatus.zip').Create()
-        #iconCondID = Images[self.iconCondName].ID
-        #Domoticz.Debug("Image created. ID: "+str(iconCondID))
-        #if ("IonStatus" not in Images): 
-        #    Domoticz.Image('IonStatus.zip').Create()
-        #iconIonID = Images["IonStatus"].ID
-        if self.iconIonName not in Images: Domoticz.Image('IonStatus.zip').Create()
-        #iconIonID = Images[self.iconIonName].ID
-        #Domoticz.Debug("Image created. ID: "+str(iconIonID))
-        #Domoticz.Device(Name='Status', Unit=2, Type=17,  Switchtype=17, Image=iconID).Create()
-        #Domoticz.Device(Name='Setpoint', Unit=3, Type=242, Subtype=1, Image=iconID).Create()
+        self.tcpConn.Connect()
 
+        if self.iconCondName not in Images: Domoticz.Image('CondStatus.zip').Create()
+
+        if self.iconIonName not in Images: Domoticz.Image('IonStatus.zip').Create()
 
         if (len(Devices) == 0):
             Domoticz.Device(Name="Power", Unit=1, Image=19, TypeName="Switch", Used=1).Create()
@@ -107,7 +101,7 @@ class BasePlugin:
                 Domoticz.Device(Name="Ionizer", Unit=7, Image=20, TypeName="Switch", Used=1).Create()
             Domoticz.Device(Name="Care Filter", Unit=8, TypeName='Custom', Image=19, Options=self.customSensorOptions, Used=1).Create()
         
-        Domoticz.Heartbeat(int(Parameters['Mode3']))
+        Domoticz.Heartbeat(15)
         
         Domoticz.Log("On Start")
         DumpConfigToLog()
@@ -116,12 +110,19 @@ class BasePlugin:
         Domoticz.Log("onStop called")
 
     def onConnect(self, Connection, Status, Description):
-        Domoticz.Debug("LGACServer connection status is [%s] [%s]" % (Status, Description))
+        Domoticz.Log("LGACServer connection status is [%s] [%s]" % (Status, Description))
 
     def onMessage(self, Connection, Data):
         Domoticz.Log("onMessage called")
+        Domoticz.Debug("onMessage got" + str(Data))
+
         try:
             self.unpacker.feed(Data)
+
+        except msgpack.exceptions.UnpackException as e:
+            Domoticz.Error('Unpacker exception' + str(e))
+
+        else:
             for result in self.unpacker:
 
                 Domoticz.Debug("Got: %s" % result)
@@ -184,9 +185,9 @@ class BasePlugin:
                         
                         if (Devices[5].nValue != self.powerOn or Devices[5].sValue != sValueNew):
                             Devices[5].Update(nValue = self.powerOn, sValue = sValueNew)
-                        
-                        
+ 
                         #Temp Setpoint, update once per 30 minutes if no changes
+                        Domoticz.Debug('Checking lastupdate' + Devices[6].LastUpdate)
                         lastUpdate = datetime.strptime(Devices[6].LastUpdate, "%Y-%m-%d %H:%M:%S")
                         delta = datetime.now() - lastUpdate
                         if (Devices[6].nValue != self.powerOn or Devices[6].sValue != result['temp_setpoint'] or delta.total_seconds() > 1800):
@@ -205,8 +206,7 @@ class BasePlugin:
                     elif result['cmd'] == 'check_Filter':
                         Domoticz.Log("Filter:" + str(result['filter_percentage_state']))
                         Devices[8].Update(nValue = result['filter_percentage_state'], sValue = str(result['filter_percentage_state']))
-        except msgpack.UnpackException as e:
-            Domoticz.Error('Unpacker exception' + str(e))
+
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Log("onCommand called for Unit " + str(Unit) + ": Parameter '" + str(Command) + "', Level: " + str(Level))
@@ -281,21 +281,30 @@ class BasePlugin:
 
     def onDisconnect(self, Connection):
         Domoticz.Log("LGAC onDisconnect called")
-        Domoticz.Debug("LGACServer disconnected")
 
     def onHeartbeat(self):
-        if not self.tcpConn.Connecting() and not self.tcpConn.Connected():
+#        if not self.tcpConn.Connecting() and not self.tcpConn.Connected():
+
+        if (self.heartBeatCnt % self.heartBeatInterval) == 0 :
+            if not self.tcpConn.Connected():
+                if not self.tcpConn.Connecting():
+                    self.tcpConn.Connect()
+                    Domoticz.Log("Trying connect to LGACServer %s:%s" % (self.subHost, self.subPort))
+                else:
+                    Domoticz.Log("Still connecting to LGACServer %s:%s" % (self.subHost, self.subPort))
+            else:
+#	        check the filter twice a day
+                if self.heartBeatCnt % (self.heartBeatsPerDay / 2) == 0: 
+                    self.apiRequest('check_Filter')
+
+                self.apiRequest('status')
+
+#	every day reset the connection
+        if (self.heartBeatCnt % self.heartBeatsPerDay == 0 ):
+            self.tcpConn.Disconnect()
             self.tcpConn.Connect()
-            Domoticz.Debug("Trying connect to LGACServer %s:%s" % (self.subHost, self.subPort))
 
-        elif self.tcpConn.Connecting():
-            Domoticz.Debug("Still connecting to LGACServer %s:%s" % (self.subHost, self.subPort))
-
-        elif self.tcpConn.Connected():
-            if self.heartBeatCnt % 60 == 0 or self.heartBeatCnt == 0: #every hour
-                self.apiRequest('check_Filter')
-            self.apiRequest('status')
-            self.heartBeatCnt += 1
+        self.heartBeatCnt += 1
     
     def apiRequest(self, cmd_name, cmd_value=None):
         if not self.tcpConn.Connected(): return False
