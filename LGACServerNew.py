@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 import sys
 import os
 
@@ -25,8 +24,8 @@ import enum
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--acDevNum', type=str, help='AC Device Number', default='put here dev num')
-parser.add_argument('--token', type=str, help='Refresh Token', default='put here token')
+parser.add_argument('--acDevNum', type=str, help='AC Device Number', default='d27b8ce0-7149-11d3-80ae-2c2bf9affc36')
+parser.add_argument('--token', type=str, help='Refresh Token', default='1ce698041925c6b3ce8f2fd813f3b553cb114b74e357448196af18fa1079a7fce29a8123ebd3acf961129db66f54e7fe')
 parser.add_argument('--host', type=str, default='127.0.0.1')
 parser.add_argument('--port', type=int, default=22233)
 args = parser.parse_args()
@@ -67,7 +66,8 @@ def socket_incoming_connection(socket, address):
 
     sockets[address] = socket
 
-    unpacker = Unpacker(encoding='utf-8')
+#    unpacker = Unpacker(encoding='utf-8')
+    unpacker = Unpacker()
     while True:
         data = socket.recv(4096)
 
@@ -212,4 +212,3 @@ if __name__ == '__main__':
     services.spawn(ac_commands_handler, args.acDevNum, args.token, receive)
     services.spawn(socket_msg_sender, sockets, send)
     services.join()
-
