@@ -29,8 +29,6 @@
 #        <param field="Mode2" label="LG AC ID" width="200px" required="true" default="0750d920-689f-11dc-a10a-a06faaad2e3e"/>
 #        changes to support updated msgpack and allow plugin restart + connection recovery
 
-
-
 import Domoticz
 import importlib
 import msgpack
