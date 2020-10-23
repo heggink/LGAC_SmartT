@@ -65,7 +65,7 @@ To do that just open it in nano and save (Ctrl+X. yes and enter):
 
 Authenticate with the SmartThing service to get a refresh token by running the WideQ example script.Run this in the `wideq` directory:
 
-```python3 example.py```
+```sudo python3 example.py```
 
 The script will ask you to open a browser, log in, and then paste the URL you're redirected to. It will then write a JSON file called `wideq_state.json`.
 
