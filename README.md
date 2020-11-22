@@ -7,23 +7,23 @@ LG AC Smarthing Unit control for Domoticz
 
 Before installation plugin check the `python3`, `python3-dev`, `pip3` is installed for Domoticz plugin system:
 
-```sudo apt-get install python3 python3-dev python3-pip```.
+```sudo apt-get install python3 python3-dev python3-pip```
 
 Make sure you have libffi and openssl headers installed, you can do this on Debian-based systems (like Rasperry Pi) with:
 
-```sudo apt-get install libffi-dev libssl-dev```.
+```sudo apt-get install libffi-dev libssl-dev```
 
 Also do note that the setuptools version is too old for installing some requirements, so before trying to install this package you should update the setuptools with:
 
-```sudo pip3 install -U setuptools```.
+```sudo pip3 install -U setuptools```
 
 Install all necessary libraries for LGACServer.py:
 
-```sudo pip3 install gevent msgpack-python greenlet```.
+```sudo pip3 install gevent msgpack-python greenlet```
 
 Install [LGAC_SmartT] by typing something like:
 ```
-$ git clone https://github.com/olinek2/LGAC_SmartT
+$ git clone https://github.com/heggink/LGAC_SmartT
 $ cd LGAC_SmartT
 $ sudo pip3 install -e .
 ```
