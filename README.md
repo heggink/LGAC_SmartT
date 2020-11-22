@@ -89,11 +89,11 @@ Make it executable:
 ```sudo chmod +x LGACServerNew.py```
 
 To check if the server is operating properly type:
-```python3 ./LGACServerNew.py```.
+```python3 ./LGACServerNew.py```
 
 It will start operation. Open another terminal window, log in, navigate to 'LGAC_SmartT' folder ```cd LGAC_SmartT``` and run testServer.py file:
 
-```sudo python3 testServer.py```. 
+```sudo python3 testServer.py```
 
 You should observe communication between this two applications.
 
