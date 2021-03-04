@@ -19,7 +19,8 @@ Also do note that the setuptools version is too old for installing some requirem
 
 Install all necessary libraries for LGACServer.py:
 
-```sudo pip3 install gevent msgpack-python greenlet```
+```sudo pip3 install gevent msgpack greenlet```
+Note: if you have msgpack-python installed, please uninstall as this is an old version that is incompatible.
 
 Install [LGAC_SmartT] by typing something like:
 ```
